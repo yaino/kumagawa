@@ -32,6 +32,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok()
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or_else(|| 123);
+    let file_name = env::var("AUDIO_FILE_NAME").unwrap_or_else(|_| "audio".to_string());
+
     let args = env::args().collect::<Vec<String>>();
     if args.len() < 2 {
         println!("使い方: cargo run -- <引数>  # 引数がpromptになる");
@@ -39,15 +41,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let prompt = args.get(1).expect("can't read prompt").clone();
 
-    let download_music_url = generate_music(
-        prompt,
-        weight,
-        length_seconds,
-        seed,
-        auth_key.as_str(),
-    )
-    .await?;
-    download_file(download_music_url, auth_key.as_str()).await?;
+    let download_music_url =
+        generate_music(prompt, weight, length_seconds, seed, auth_key.as_str()).await?;
+    download_file(download_music_url, auth_key.as_str(), file_name).await?;
     Ok(())
 }
 
@@ -97,7 +93,6 @@ async fn generate_music(
 
     // レスポンスボディを取得
     let body = response.text().await?;
-    println!("Response Body: {}", body);
 
     let result_url = serde_json::from_str::<CreateMusicResponse>(&body)
         .unwrap()
@@ -108,9 +103,12 @@ async fn generate_music(
     Ok(result_url)
 }
 
-async fn download_file(url: String, auth_key: &str) -> Result<(), reqwest::Error> {
-    println!("download url: {}", url);
-    let file = File::create("audio.mp3").expect("Unable to create file");
+async fn download_file(
+    url: String,
+    auth_key: &str,
+    file_name: String,
+) -> Result<(), reqwest::Error> {
+    let file = File::create(file_name.clone() + ".mp3").expect("Unable to create file");
     let mut writer = BufWriter::new(file);
 
     let client = Client::new();
@@ -169,9 +167,11 @@ async fn download_file(url: String, auth_key: &str) -> Result<(), reqwest::Error
     let mut stream = response.bytes_stream();
     // ストリームデータをファイルに書き込む
     while let Ok(Some(chunk)) = stream.try_next().await {
-        // let chunk = chunk.expect("cannot chunk");
         writer.write_all(&chunk).expect("cannot write");
     }
-    println!("Audio data has been written to 'audio.mp3'");
+    println!(
+        "{}",
+        format!("Audio data has been written to '{}.mp3'", file_name)
+    );
     Ok(())
 }
