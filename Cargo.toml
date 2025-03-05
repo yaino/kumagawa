@@ -1,0 +1,13 @@
+[package]
+name = "kumagawa"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.43.0", features = ["full"] }
+tokio-macros = { version = "1.8.2" }
+serde_json = "1.0.138"
+reqwest = { version = "0.12.12", features = ["json", "stream"] }
+serde = { version = "1.0.217", features = ["derive"] }
+futures-util = "0.3.31"
+dotenvy = "0.15.7"
